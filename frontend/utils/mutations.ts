@@ -38,11 +38,10 @@ export async function cancelJob(id: string): Promise<Job> {
 
     return response.data.data!;
   } catch (error: any) {
-    console.error(
-      "Failed to cancel job:",
-      error.response?.data || error.message,
-    );
-    throw error;
+    const message =
+      error.response?.data?.error || error.message || "Failed to cancel job";
+    console.error("Failed to cancel job:", message);
+    throw new Error(message);
   }
 }
 
@@ -62,10 +61,9 @@ export async function retryJob(id: string): Promise<Job> {
 
     return response.data.data!;
   } catch (error: any) {
-    console.error(
-      "Failed to retry job:",
-      error.response?.data || error.message,
-    );
-    throw error;
+    const message =
+      error.response?.data?.error || error.message || "Failed to retry job";
+    console.error("Failed to retry job:", message);
+    throw new Error(message);
   }
 }

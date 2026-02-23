@@ -1,9 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchJobs } from "@/utils/queries";
-import { Job, JobStatus } from "@/utils/interfaces";
+import { cancelJob, retryJob } from "@/utils/mutations";
+import {
+  Job,
+  JobStatus,
+  canBeCancelled,
+  canBeRetried,
+} from "@/utils/interfaces";
 
 const STATUS_STYLES: Record<JobStatus, string> = {
   pending: "bg-yellow-50 text-yellow-700 border-yellow-200",
@@ -13,6 +19,8 @@ const STATUS_STYLES: Record<JobStatus, string> = {
   cancelling: "bg-orange-50 text-orange-700 border-orange-200",
   cancelled: "bg-gray-100 text-gray-500 border-gray-200",
 };
+
+const ACTIVE_STATUSES: JobStatus[] = ["pending", "processing", "cancelling"];
 
 function StatusBadge({ status }: { status: JobStatus }) {
   return (
@@ -25,23 +33,66 @@ function StatusBadge({ status }: { status: JobStatus }) {
 }
 
 function JobRow({ job }: { job: Job }) {
+  const queryClient = useQueryClient();
+
+  const cancelMutation = useMutation({
+    mutationFn: () => cancelJob(job.id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["jobs"] }),
+  });
+
+  const retryMutation = useMutation({
+    mutationFn: () => retryJob(job.id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["jobs"] }),
+  });
+
   return (
     <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-      <td className="px-4 py-3 text-sm font-medium text-gray-900 truncate max-w-[200px]">
+      <td className="px-4 py-3 text-sm font-medium text-gray-900 truncate max-w-[180px]">
         {job.name}
       </td>
-      <td className="px-4 py-3 text-sm text-gray-500 capitalize">{job.jobType}</td>
+      <td className="px-4 py-3 text-sm text-gray-500 capitalize">
+        {job.jobType}
+      </td>
       <td className="px-4 py-3">
         <StatusBadge status={job.status} />
       </td>
-      {job.retryCount > 0 && (
-        <td className="px-4 py-3 text-sm text-gray-400">
-          Retries: {job.retryCount}
-        </td>
-      )}
-      {job.retryCount === 0 && <td className="px-4 py-3" />}
+      <td className="px-4 py-3 text-sm text-gray-400">
+        {job.retryCount > 0 ? `${job.retryCount}/3` : "—"}
+      </td>
       <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">
         {new Date(job.createdAt).toLocaleString()}
+      </td>
+      <td className="px-4 py-3 text-right">
+        {canBeCancelled(job) && (
+          <button
+            onClick={() => cancelMutation.mutate()}
+            disabled={cancelMutation.isPending}
+            title={
+              cancelMutation.isError
+                ? (cancelMutation.error as Error).message
+                : undefined
+            }
+            className="rounded-md border border-orange-200 bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-700 hover:bg-orange-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {cancelMutation.isPending ? "Cancelling…" : "Cancel"}
+          </button>
+        )}
+        {canBeRetried(job) && (
+          <button
+            onClick={() => retryMutation.mutate()}
+            disabled={retryMutation.isPending}
+            title={
+              retryMutation.isError
+                ? (retryMutation.error as Error).message
+                : undefined
+            }
+            className="rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {retryMutation.isPending
+              ? "Retrying…"
+              : `Retry (${job.retryCount}/3)`}
+          </button>
+        )}
       </td>
     </tr>
   );
@@ -54,6 +105,12 @@ export default function JobList() {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["jobs", { page, limit }],
     queryFn: () => fetchJobs(page, limit),
+    // Poll every 3 seconds while any job is in an active state
+    refetchInterval: (query) => {
+      const jobs = query.state.data?.jobs ?? [];
+      const hasActive = jobs.some((j) => ACTIVE_STATUSES.includes(j.status));
+      return hasActive ? 3000 : false;
+    },
   });
 
   const totalPages = data ? Math.ceil(data.total / limit) : 1;
@@ -97,6 +154,7 @@ export default function JobList() {
                 <th className="px-4 py-3 text-left">Status</th>
                 <th className="px-4 py-3 text-left">Retries</th>
                 <th className="px-4 py-3 text-left">Created</th>
+                <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
