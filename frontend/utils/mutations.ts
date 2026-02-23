@@ -15,11 +15,10 @@ export async function createJob(data: CreateJobRequest): Promise<Job> {
 
     return response.data.data!;
   } catch (error: any) {
-    console.error(
-      "Failed to create job:",
-      error.response?.data || error.message,
-    );
-    throw error;
+    const message =
+      error.response?.data?.error || error.message || "Failed to create job";
+    console.error("Failed to create job:", message);
+    throw new Error(message);
   }
 }
 
