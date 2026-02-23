@@ -50,9 +50,16 @@ export function canBeCancelled(job: Job): boolean {
   return job.status === 'pending' || job.status === 'processing';
 }
 
+// Returns the max retries allowed for a job (config.retries ?? 3)
+export function maxRetries(job: Job): number {
+  const v = job.config?.retries;
+  if (typeof v === 'number' && v > 0) return v;
+  return 3;
+}
+
 // Helper to check if a job can be retried
 export function canBeRetried(job: Job): boolean {
-  return job.status === 'failed' && job.retryCount < 3;
+  return job.status === 'failed' && job.retryCount < maxRetries(job);
 }
 
 // Helper to check if a job is in a terminal state

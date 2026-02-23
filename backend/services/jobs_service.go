@@ -182,7 +182,7 @@ func (s *jobsService) RetryJob(ctx context.Context, id string) (*models.Job, err
 	if job.Status != models.JobStatusFailed {
 		return nil, ErrInvalidJobState
 	}
-	if job.RetryCount >= 3 {
+	if job.RetryCount >= job.MaxRetries() {
 		return nil, ErrMaxRetriesReached
 	}
 
