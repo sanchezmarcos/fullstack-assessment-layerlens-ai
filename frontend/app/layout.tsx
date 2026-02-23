@@ -1,7 +1,15 @@
+<<<<<<< HEAD
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Providers } from "./providers";
 import "./globals.css";
+=======
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+import { Providers } from './providers';
+import { Toaster } from '@/components/ui/sonner';
+>>>>>>> task-2/job-cancellation
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,6 +27,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <Providers>{children}</Providers>
+        <Toaster richColors closeButton position="top-right" />
       </body>
     </html>
   );

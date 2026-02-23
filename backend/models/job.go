@@ -60,6 +60,26 @@ func (s JobStatus) IsTerminal() bool {
 	return s == JobStatusCompleted || s == JobStatusFailed || s == JobStatusCancelled
 }
 
+// MaxRetries returns the maximum number of retries allowed for the job.
+// If config["retries"] is set it is used, otherwise the default is 3.
+func (j *Job) MaxRetries() int {
+	if j.Config != nil {
+		if v, ok := j.Config["retries"]; ok {
+			switch n := v.(type) {
+			case int:
+				return n
+			case int32:
+				return int(n)
+			case int64:
+				return int(n)
+			case float64:
+				return int(n)
+			}
+		}
+	}
+	return 3
+}
+
 // CanBeCancelled checks if a job can be cancelled
 func (j *Job) CanBeCancelled() bool {
 	return j.Status == JobStatusPending || j.Status == JobStatusProcessing
@@ -67,5 +87,5 @@ func (j *Job) CanBeCancelled() bool {
 
 // CanBeRetried checks if a job can be retried
 func (j *Job) CanBeRetried() bool {
-	return j.Status == JobStatusFailed && j.RetryCount < 3
+	return j.Status == JobStatusFailed && j.RetryCount < j.MaxRetries()
 }
