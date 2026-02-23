@@ -99,7 +99,7 @@ function JobRow({ job }: { job: Job }) {
 
   return (
     <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors h-14">
-      <td className="px-4 py-3 text-sm font-medium text-gray-900 truncate max-w-[180px] align-middle">
+      <td className="px-4 py-3 text-sm font-medium text-gray-900 truncate max-w-45 align-middle">
         {job.name}
       </td>
       <td className="px-4 py-3 text-sm text-gray-500 capitalize align-middle">
