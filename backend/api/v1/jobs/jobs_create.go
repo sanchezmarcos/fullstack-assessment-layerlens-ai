@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/fullstack-assessment/backend/api/shared"
@@ -19,7 +20,12 @@ func (h *Handler) createJob(w http.ResponseWriter, r *http.Request) {
 
 	job, err := h.service.CreateJob(r.Context(), req)
 	if err != nil {
-		shared.RespondError(w, http.StatusInternalServerError, err)
+		var validationErr *services.ValidationError
+		if errors.As(err, &validationErr) {
+			shared.RespondError(w, http.StatusBadRequest, err)
+		} else {
+			shared.RespondError(w, http.StatusInternalServerError, err)
+		}
 		return
 	}
 
