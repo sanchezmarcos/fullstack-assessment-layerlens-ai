@@ -175,8 +175,8 @@ func processJob(ctx context.Context, collection *mongo.Collection, dlqWriter *ka
 
 	log.Printf("Job %s status updated to processing", jobMsg.JobID)
 
-	// Simulate processing time (2-5 seconds)
-	processingTime := time.Duration(2+rand.Intn(4)) * time.Second
+	// Simulate processing time — use config["timeout"] (seconds) if provided, else random 2-5 s
+	processingTime := configTimeout(jobMsg.Config)
 	time.Sleep(processingTime)
 
 	// Check if job was cancelled during processing
@@ -316,4 +316,16 @@ func getEnv(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+// configTimeout reads config["timeout"] (seconds). Falls back to a random 2-5 s.
+func configTimeout(config map[string]interface{}) time.Duration {
+	if config != nil {
+		if v, ok := config["timeout"]; ok {
+			if f, ok := v.(float64); ok && f > 0 {
+				return time.Duration(f * float64(time.Second))
+			}
+		}
+	}
+	return time.Duration(2+rand.Intn(4)) * time.Second
 }

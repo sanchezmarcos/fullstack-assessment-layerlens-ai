@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/fullstack-assessment/backend/models"
 	"github.com/fullstack-assessment/backend/repositories"
@@ -52,11 +53,11 @@ type JobsService interface {
 
 type jobsService struct {
 	repo     repositories.JobsRepository
-	producer *KafkaProducer
+	producer MessagePublisher
 }
 
 // NewJobsService creates a new jobs service
-func NewJobsService(repo repositories.JobsRepository, producer *KafkaProducer) JobsService {
+func NewJobsService(repo repositories.JobsRepository, producer MessagePublisher) JobsService {
 	return &jobsService{
 		repo:     repo,
 		producer: producer,
@@ -139,32 +140,71 @@ func (s *jobsService) ListJobs(ctx context.Context, filter JobFilter) ([]models.
 }
 
 // CancelJob cancels a job and publishes a cancellation message to Kafka
-// NOTE: This is a skeleton - candidate should implement this
 func (s *jobsService) CancelJob(ctx context.Context, id string) (*models.Job, error) {
-	// TODO: Candidate implements this
-	// 1. Get the job by ID
-	// 2. Check if job exists
-	// 3. Check if job can be cancelled (pending or processing status)
-	// 4. Update job status to "cancelling"
-	// 5. Publish cancellation message to Kafka topic "job_cancellations"
-	// 6. Return the updated job
+	job, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get job: %w", err)
+	}
+	if job == nil {
+		return nil, ErrJobNotFound
+	}
 
-	return nil, errors.New("not implemented")
+	if !job.CanBeCancelled() {
+		return nil, ErrInvalidJobState
+	}
+
+	if err := s.repo.UpdateStatus(ctx, id, models.JobStatusCancelling); err != nil {
+		return nil, fmt.Errorf("failed to update job status: %w", err)
+	}
+
+	message := CancellationMessage{
+		JobID:       job.ID.Hex(),
+		CancelledAt: time.Now(),
+	}
+	if err := s.producer.Publish(ctx, "job_cancellations", message); err != nil {
+		fmt.Printf("Warning: failed to publish cancellation to Kafka: %v\n", err)
+	}
+
+	job.Status = models.JobStatusCancelling
+	return job, nil
 }
 
-// RetryJob retries a failed job
-// NOTE: This is a skeleton - candidate should implement this
+// RetryJob retries a failed job by re-publishing it to the jobs topic
 func (s *jobsService) RetryJob(ctx context.Context, id string) (*models.Job, error) {
-	// TODO: Candidate implements this
-	// 1. Get the job by ID
-	// 2. Check if job exists
-	// 3. Check if job can be retried (failed status, retry_count < 3)
-	// 4. Increment retry_count
-	// 5. Update job status to "pending"
-	// 6. Re-publish job to Kafka topic "jobs"
-	// 7. Return the updated job
+	job, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get job: %w", err)
+	}
+	if job == nil {
+		return nil, ErrJobNotFound
+	}
 
-	return nil, errors.New("not implemented")
+	if job.Status != models.JobStatusFailed {
+		return nil, ErrInvalidJobState
+	}
+	if job.RetryCount >= job.MaxRetries() {
+		return nil, ErrMaxRetriesReached
+	}
+
+	newRetryCount := job.RetryCount + 1
+	if err := s.repo.UpdateStatusWithRetry(ctx, id, models.JobStatusPending, newRetryCount); err != nil {
+		return nil, fmt.Errorf("failed to update job: %w", err)
+	}
+
+	message := JobMessage{
+		JobID:     job.ID.Hex(),
+		Name:      job.Name,
+		JobType:   string(job.JobType),
+		Config:    job.Config,
+		CreatedAt: job.CreatedAt,
+	}
+	if err := s.producer.Publish(ctx, "jobs", message); err != nil {
+		fmt.Printf("Warning: failed to re-publish job to Kafka: %v\n", err)
+	}
+
+	job.Status = models.JobStatusPending
+	job.RetryCount = newRetryCount
+	return job, nil
 }
 
 // IsValidationError checks if an error is a validation error
