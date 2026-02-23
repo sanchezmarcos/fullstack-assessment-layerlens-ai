@@ -1,18 +1,16 @@
+import CreateJobForm from "@/components/CreateJobForm";
+import JobList from "@/components/JobList";
+
 export default function Home() {
   return (
-    <main className="min-h-screen p-8">
-      <h1 className="text-2xl font-bold mb-4">Job Processing System</h1>
-      <p className="text-gray-600 mb-8">
-        Welcome! Your task is to build the UI for this job processing system.
-      </p>
+    <main className="min-h-screen bg-gray-50">
+      <header className="bg-white border-b border-gray-200 px-6 py-4">
+        <h1 className="text-xl font-bold text-gray-900">Job Processing System</h1>
+      </header>
 
-      {/* TODO: Candidate implements their UI here */}
-      <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center text-gray-500">
-        <p>Your components go here.</p>
-        <p className="text-sm mt-2">
-          Check out <code className="bg-gray-100 px-1 rounded">utils/</code> for
-          pre-built API calls and TypeScript interfaces.
-        </p>
+      <div className="mx-auto max-w-5xl px-4 py-8 space-y-6">
+        <CreateJobForm />
+        <JobList />
       </div>
     </main>
   );
