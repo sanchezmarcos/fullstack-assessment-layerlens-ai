@@ -1,0 +1,51 @@
+# ── Go ────────────────────────────────────────────────────────────
+# Compiled binaries
+backend/backend
+worker/worker
+*.exe
+*.out
+
+# Test cache & coverage
+*.test
+*.prof
+coverage.out
+coverage.html
+
+# ── Node / Next.js ────────────────────────────────────────────────
+node_modules/
+.next/
+out/
+.cache/
+*.tsbuildinfo
+next-env.d.ts
+
+# Package manager locks (keep only one; remove whichever you don't use)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# ── Environment variables ─────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Docker ───────────────────────────────────────────────────────
+# (docker-compose.override.yml often holds local secrets)
+docker-compose.override.yml
+
+# ── macOS ────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# ── IDEs / editors ───────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ── Logs ─────────────────────────────────────────────────────────
+*.log
+logs/

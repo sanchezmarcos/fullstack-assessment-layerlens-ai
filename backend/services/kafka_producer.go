@@ -9,6 +9,12 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
+// MessagePublisher is the interface used by the service layer to publish messages.
+// Using an interface allows the Kafka producer to be mocked in unit tests.
+type MessagePublisher interface {
+	Publish(ctx context.Context, topic string, message interface{}) error
+}
+
 // KafkaProducer handles publishing messages to Kafka topics
 type KafkaProducer struct {
 	writer *kafka.Writer
